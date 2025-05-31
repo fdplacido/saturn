@@ -18,6 +18,11 @@ func TestParseFuncs(t *testing.T) {
 		{"unixus", "1748705359000000", time.Unix(0, 1748705359000000*int64(time.Microsecond)).UTC(), false},
 		{"unixns", "1748705359000000000", time.Unix(0, 1748705359000000000).UTC(), false},
 		{"unix", "notanumber", time.Time{}, true},
+		{"autounix", "1748705359", time.Unix(1748705359, 0).UTC(), false},                                     // seconds
+		{"autounix", "1748705359000", time.Unix(0, 1748705359000*int64(time.Millisecond)).UTC(), false},       // milliseconds
+		{"autounix", "1748705359000000", time.Unix(0, 1748705359000000*int64(time.Microsecond)).UTC(), false}, // microseconds
+		{"autounix", "1748705359000000000", time.Unix(0, 1748705359000000000).UTC(), false},                   // nanoseconds
+		{"autounix", "notanumber", time.Time{}, true},
 	}
 
 	for _, tt := range tests {
