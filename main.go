@@ -89,12 +89,27 @@ var formatFuncs = map[string]func(time.Time) string{
 	rfc3339Format: func(t time.Time) string {
 		return t.UTC().Format(time.RFC3339)
 	},
+	rfc3339NanoFormat: func(t time.Time) string {
+		return t.UTC().Format(time.RFC3339Nano)
+	},
+	unixSFormat: func(t time.Time) string {
+		return strconv.FormatInt(t.UTC().Unix(), 10)
+	},
+	unixMsFormat: func(t time.Time) string {
+		return strconv.FormatInt(t.UTC().UnixNano()/1e6, 10)
+	},
+	unixUsFormat: func(t time.Time) string {
+		return strconv.FormatInt(t.UTC().UnixNano()/1e3, 10)
+	},
+	unixNsFormat: func(t time.Time) string {
+		return strconv.FormatInt(t.UTC().UnixNano(), 10)
+	},
 }
 
 func main() {
 	input := flag.String("input", "", "Input date/time string")
 	inFmt := flag.String("in-format", "date", "Input format: rfc3339, rfc3339nano, unix, unixms, unixus, unixns, autounix")
-	outFmt := flag.String("out-format", "rfc3339", "Output format: rfc3339")
+	outFmt := flag.String("out-format", "rfc3339", "Output format: rfc3339, rfc3339nano, unix, unixms, unixus, unixns")
 	flag.Parse()
 
 	if *input == "" {

@@ -46,10 +46,28 @@ func TestParseFuncs(t *testing.T) {
 }
 
 func TestFormatFuncs(t *testing.T) {
-	tm := time.Date(2024, 6, 1, 12, 34, 56, 0, time.UTC)
-	expected := "2024-06-01T12:34:56Z"
-	got := formatFuncs["rfc3339"](tm)
-	if got != expected {
-		t.Errorf("formatFuncs[rfc3339](%v) = %q, want %q", tm, got, expected)
+	tm := time.Date(2024, 6, 1, 12, 34, 56, 123456789, time.UTC)
+	tests := []struct {
+		format   string
+		expected string
+	}{
+		{"rfc3339", "2024-06-01T12:34:56Z"},
+		{"rfc3339nano", "2024-06-01T12:34:56.123456789Z"},
+		{"unix", "1717245296"},
+		{"unixms", "1717245296123"},
+		{"unixus", "1717245296123456"},
+		{"unixns", "1717245296123456789"},
+	}
+
+	for _, tt := range tests {
+		fn, ok := formatFuncs[tt.format]
+		if !ok {
+			t.Errorf("formatFuncs missing for format %s", tt.format)
+			continue
+		}
+		got := fn(tm)
+		if got != tt.expected {
+			t.Errorf("formatFuncs[%s](%v) = %q, want %q", tt.format, tm, got, tt.expected)
+		}
 	}
 }
