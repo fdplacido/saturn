@@ -13,6 +13,9 @@ func TestParseFuncs(t *testing.T) {
 		wantErr  bool
 	}{
 		{"rfc3339", "2024-06-01T12:34:56Z", time.Date(2024, 6, 1, 12, 34, 56, 0, time.UTC), false},
+		{"rfc3339nano", "2024-06-01T12:34:56.123456789Z", time.Date(2024, 6, 1, 12, 34, 56, 123456789, time.UTC), false},
+		{"rfc3339nano", "2024-06-01T12:34:56Z", time.Date(2024, 6, 1, 12, 34, 56, 0, time.UTC), false},
+		{"rfc3339nano", "invalid", time.Time{}, true},
 		{"unix", "1748705359", time.Unix(1748705359, 0).UTC(), false},
 		{"unixms", "1748705359000", time.Unix(0, 1748705359000*int64(time.Millisecond)).UTC(), false},
 		{"unixus", "1748705359000000", time.Unix(0, 1748705359000000*int64(time.Microsecond)).UTC(), false},
