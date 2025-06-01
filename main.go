@@ -9,57 +9,127 @@ import (
 )
 
 const (
-	rfc3339Format = "rfc3339"
-	unixSFormat   = "unix"   // seconds
-	unixMsFormat  = "unixms" // milliseconds
-	unixUsFormat  = "unixus" // microseconds
-	unixNsFormat  = "unixns" // nanoseconds
+	rfc3339Format     = "rfc3339"
+	rfc3339NanoFormat = "rfc3339nano"
+	unixSFormat       = "unix"   // seconds
+	unixMsFormat      = "unixms" // milliseconds
+	unixUsFormat      = "unixus" // microseconds
+	unixNsFormat      = "unixns" // nanoseconds
+	autoUnixFormat    = "autounix"
+	autoFormat        = "auto"
 )
 
+func parseAuto(s string) (time.Time, error) {
+	parsers := []func(string) (time.Time, error){
+		parseRfc3339Nano,
+		parseRfc3339,
+		parseAutoUnix,
+	}
+	var lastErr error
+	for _, fn := range parsers {
+		t, err := fn(s)
+		if err == nil {
+			return t, nil
+		}
+		lastErr = err
+	}
+	return time.Time{}, fmt.Errorf("auto-detect failed: %v", lastErr)
+}
+
+func parseAutoUnix(s string) (time.Time, error) {
+	val, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	switch {
+	case val < 1e11:
+		return time.Unix(val, 0).UTC(), nil // seconds
+	case val < 1e14:
+		return time.Unix(0, val*int64(time.Millisecond)).UTC(), nil // milliseconds
+	case val < 1e17:
+		return time.Unix(0, val*int64(time.Microsecond)).UTC(), nil // microseconds
+	default:
+		return time.Unix(0, val).UTC(), nil // nanoseconds
+	}
+}
+
+func parseRfc3339(s string) (time.Time, error) {
+	return time.Parse(time.RFC3339, s)
+}
+
+func parseRfc3339Nano(s string) (time.Time, error) {
+	return time.Parse(time.RFC3339Nano, s)
+}
+
+func parseUnixSeconds(s string) (time.Time, error) {
+	sec, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(sec, 0).UTC(), nil
+}
+
+func parseUnixMilliSeconds(s string) (time.Time, error) {
+	ms, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(0, ms*int64(time.Millisecond)).UTC(), nil
+}
+
+func parseUnixMicroSeconds(s string) (time.Time, error) {
+	us, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(0, us*int64(time.Microsecond)).UTC(), nil
+}
+
+func parseUnixNanoSeconds(s string) (time.Time, error) {
+	ns, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(0, ns).UTC(), nil
+}
+
 var parseFuncs = map[string]func(string) (time.Time, error){
-	rfc3339Format: func(s string) (time.Time, error) {
-		return time.Parse(time.RFC3339, s)
-	},
-	unixSFormat: func(s string) (time.Time, error) { // seconds
-		sec, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return time.Time{}, err
-		}
-		return time.Unix(sec, 0).UTC(), nil
-	},
-	unixMsFormat: func(s string) (time.Time, error) { // milliseconds
-		ms, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return time.Time{}, err
-		}
-		return time.Unix(0, ms*int64(time.Millisecond)).UTC(), nil
-	},
-	unixUsFormat: func(s string) (time.Time, error) { // microseconds
-		us, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return time.Time{}, err
-		}
-		return time.Unix(0, us*int64(time.Microsecond)).UTC(), nil
-	},
-	unixNsFormat: func(s string) (time.Time, error) { // nanoseconds
-		ns, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return time.Time{}, err
-		}
-		return time.Unix(0, ns).UTC(), nil
-	},
+	rfc3339Format:     parseRfc3339,
+	rfc3339NanoFormat: parseRfc3339Nano,
+	unixSFormat:       parseUnixSeconds,
+	unixMsFormat:      parseUnixMilliSeconds,
+	unixUsFormat:      parseUnixMicroSeconds,
+	unixNsFormat:      parseUnixNanoSeconds,
+	autoUnixFormat:    parseAutoUnix,
+	autoFormat:        parseAuto,
 }
 
 var formatFuncs = map[string]func(time.Time) string{
 	rfc3339Format: func(t time.Time) string {
 		return t.UTC().Format(time.RFC3339)
 	},
+	rfc3339NanoFormat: func(t time.Time) string {
+		return t.UTC().Format(time.RFC3339Nano)
+	},
+	unixSFormat: func(t time.Time) string {
+		return strconv.FormatInt(t.UTC().Unix(), 10)
+	},
+	unixMsFormat: func(t time.Time) string {
+		return strconv.FormatInt(t.UTC().UnixNano()/1e6, 10)
+	},
+	unixUsFormat: func(t time.Time) string {
+		return strconv.FormatInt(t.UTC().UnixNano()/1e3, 10)
+	},
+	unixNsFormat: func(t time.Time) string {
+		return strconv.FormatInt(t.UTC().UnixNano(), 10)
+	},
 }
 
 func main() {
 	input := flag.String("input", "", "Input date/time string")
-	inFmt := flag.String("in-format", "date", "Input format: rfc3339, unix, unixms, unixus, unixns")
-	outFmt := flag.String("out-format", "rfc3339", "Output format: rfc3339")
+	inFmt := flag.String("in-format", "auto", "Input format: auto (default), rfc3339, rfc3339nano, unix, unixms, unixus, unixns, autounix")
+	outFmt := flag.String("out-format", "rfc3339", "Output format: rfc3339 (default), rfc3339nano, unix, unixms, unixus, unixns")
+
 	flag.Parse()
 
 	if *input == "" {
