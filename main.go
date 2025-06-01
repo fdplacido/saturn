@@ -15,8 +15,26 @@ const (
 	unixMsFormat      = "unixms" // milliseconds
 	unixUsFormat      = "unixus" // microseconds
 	unixNsFormat      = "unixns" // nanoseconds
-	autoUnix          = "autounix"
+	autoUnixFormat    = "autounix"
+	autoFormat        = "auto"
 )
+
+func parseAuto(s string) (time.Time, error) {
+	parsers := []func(string) (time.Time, error){
+		parseRfc3339Nano,
+		parseRfc3339,
+		parseAutoUnix,
+	}
+	var lastErr error
+	for _, fn := range parsers {
+		t, err := fn(s)
+		if err == nil {
+			return t, nil
+		}
+		lastErr = err
+	}
+	return time.Time{}, fmt.Errorf("auto-detect failed: %v", lastErr)
+}
 
 func parseAutoUnix(s string) (time.Time, error) {
 	val, err := strconv.ParseInt(s, 10, 64)
@@ -82,7 +100,8 @@ var parseFuncs = map[string]func(string) (time.Time, error){
 	unixMsFormat:      parseUnixMilliSeconds,
 	unixUsFormat:      parseUnixMicroSeconds,
 	unixNsFormat:      parseUnixNanoSeconds,
-	autoUnix:          parseAutoUnix,
+	autoUnixFormat:    parseAutoUnix,
+	autoFormat:        parseAuto,
 }
 
 var formatFuncs = map[string]func(time.Time) string{
@@ -108,8 +127,9 @@ var formatFuncs = map[string]func(time.Time) string{
 
 func main() {
 	input := flag.String("input", "", "Input date/time string")
-	inFmt := flag.String("in-format", "date", "Input format: rfc3339, rfc3339nano, unix, unixms, unixus, unixns, autounix")
-	outFmt := flag.String("out-format", "rfc3339", "Output format: rfc3339, rfc3339nano, unix, unixms, unixus, unixns")
+	inFmt := flag.String("in-format", "auto", "Input format: auto (default), rfc3339, rfc3339nano, unix, unixms, unixus, unixns, autounix")
+	outFmt := flag.String("out-format", "rfc3339", "Output format: rfc3339 (default), rfc3339nano, unix, unixms, unixus, unixns")
+
 	flag.Parse()
 
 	if *input == "" {

@@ -71,3 +71,42 @@ func TestFormatFuncs(t *testing.T) {
 		}
 	}
 }
+
+func TestParseAuto(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected time.Time
+		wantErr  bool
+	}{
+		// rfc3339nano
+		{"2024-06-01T12:34:56.123456789Z", time.Date(2024, 6, 1, 12, 34, 56, 123456789, time.UTC), false},
+		// rfc3339
+		{"2024-06-01T12:34:56Z", time.Date(2024, 6, 1, 12, 34, 56, 0, time.UTC), false},
+		// unix (seconds)
+		{"1717245296", time.Unix(1717245296, 0).UTC(), false},
+		// unixms (milliseconds)
+		{"1717245296123", time.Unix(0, 1717245296123*int64(time.Millisecond)).UTC(), false},
+		// unixus (microseconds)
+		{"1717245296123456", time.Unix(0, 1717245296123456*int64(time.Microsecond)).UTC(), false},
+		// unixns (nanoseconds)
+		{"1717245296123456789", time.Unix(0, 1717245296123456789).UTC(), false},
+		// autounix (should fallback to correct unit)
+		{"1748705359", time.Unix(1748705359, 0).UTC(), false},
+		{"1748705359000", time.Unix(0, 1748705359000*int64(time.Millisecond)).UTC(), false},
+		{"1748705359000000", time.Unix(0, 1748705359000000*int64(time.Microsecond)).UTC(), false},
+		{"1748705359000000000", time.Unix(0, 1748705359000000000).UTC(), false},
+		// invalid
+		{"notadate", time.Time{}, true},
+	}
+
+	for _, tt := range tests {
+		got, err := parseFuncs["auto"](tt.input)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("parseFuncs[auto](%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			continue
+		}
+		if !tt.wantErr && !got.Equal(tt.expected) {
+			t.Errorf("parseFuncs[auto](%q) = %v, want %v", tt.input, got, tt.expected)
+		}
+	}
+}
